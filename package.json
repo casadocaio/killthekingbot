@@ -1,0 +1,19 @@
+{
+  "name": "killthekingbot",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "killthekingbot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Caio Pqno",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.0.1",
+    "eosjs": "^22.2.0-95-3e78dab",
+    "node-fetch": "^3.2.7",
+    "telegraf": "^3.39.0"
+  }
+}
