@@ -167,8 +167,6 @@ async function sendCoins(content, userinfo) {
   }
 }
 
-
-
 function registrar_usuario(content) {
   console.log('registering user');
   const message = content.update.message;
@@ -219,17 +217,6 @@ bot.on('text', async (content, next) => {
   //console.log('from: ', from);
   console.log('content.update.message: ', content.update.message);
 
-  /*if(msgtext.includes('txt teste send coins #33')){
-    let rawdata = fs.readFileSync('./db/wallets.json');
-  wallets = JSON.parse(rawdata);
-
-  let waxWallet = wallets.find(w => w.username === from.username);
-    console.log('veio send 2')
-    sendCoins2(content, waxWallet);
-    return;
-  }*/
-
-
   //registrar usuário
   if (msgtext.includes('/reguser')) {
     registrar_usuario(content);
@@ -260,9 +247,6 @@ bot.on('text', async (content, next) => {
       return;
   }
 
-
-  
-
   //simple tease
   if (message.text.includes('you know')) {
     content.reply('I\'ll search that on my scrolls');
@@ -272,8 +256,6 @@ bot.on('text', async (content, next) => {
     content.reply('Nice try King, but You can\'t collect a bounty on yourself.');
     return;
   }
-
-  
 
   let rawdata = fs.readFileSync('./db/wallets.json');
   wallets = JSON.parse(rawdata);
@@ -285,8 +267,6 @@ bot.on('text', async (content, next) => {
     content.reply(ret);
     return;
   }
-
-  
 
   if (!msgtext.startsWith(`@${from.username}`)
     && msgtext.includes('has killed @War4luv')) {
