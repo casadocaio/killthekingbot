@@ -13,7 +13,12 @@
   "dependencies": {
     "dotenv": "^16.0.1",
     "eosjs": "^22.2.0-95-3e78dab",
+    "install": "^0.13.0",
+    "mongoose": "^6.5.2",
     "node-fetch": "^3.2.7",
-    "telegraf": "^3.39.0"
+    "npm": "^8.17.0",
+    "telegraf": "^3.39.0",
+    "uuid": "^8.3.2",
+    "uuidv4": "^6.2.13"
   }
 }

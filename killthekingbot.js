@@ -5,6 +5,12 @@ import { Api, JsonRpc } from 'eosjs';
 import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig.js';
 import fetch from 'node-fetch';
 import fs from 'fs';
+import mongoose from 'mongoose';
+//import { uuid } from 'uuidv4';
+import { v4 as uuid } from 'uuid';
+
+import Tracker from './db/models/Tracker.js';
+import connecteToDatabase from './db/database.js';
 
 const signatureProvider = new JsSignatureProvider([process.env.WAXKEY]);
 const auth = 'pqnomoneysys'
@@ -24,6 +30,8 @@ const TAPOS = {
   blocksBehind: 3,
   expireSeconds: 30,
 };
+
+connecteToDatabase();
 
 //iniciando bot
 const bot = new Telegraf(process.env.TOKEN);
@@ -72,6 +80,126 @@ const bot = new Telegraf(process.env.TOKEN);
     return false;
   }
 }*/
+
+async function verifySWL(wallet) {
+  let retorno = false;
+  let address = 'https://wax.api.atomicassets.io/atomicassets/v1/accounts?';
+  address += 'collection_name=stondwarlord';
+  address += '&limit=16';
+  address += `&match_owner=${wallet}`;
+  address += '&page=1';
+  address += '&template_id=534153';
+
+  //##debug_verify
+  console.log('address:', address);
+
+  await fetch(address)
+    .then(response => response.json())
+    .then(data => {
+      console.log('SWL: ', data);
+      if (data.data?.[0]?.assets
+        && parseInt(data.data[0].assets) > 0) {
+        console.log('verificado = true');
+        retorno = true;
+      }
+    })
+    .catch(function (err) {
+      console.log("Unable to fetch SWL-", err);
+    });
+
+
+  return retorno;
+}
+
+async function verifyKillTracker(wallet) {
+  let retorno = false;
+  let address = 'https://wax.api.atomicassets.io/atomicassets/v1/accounts?';
+  address += 'collection_name=killthekingx';
+  address += '&limit=16';
+  address += `&match_owner=${wallet}`;
+  address += '&page=1';
+  address += '&template_id=568875';
+
+  //##debug_verify
+  console.log('address:', address);
+
+  await fetch(address)
+    .then(response => response.json())
+    .then(data => {
+      console.log('SWL: ', data);
+      if (data.data?.[0]?.assets
+        && parseInt(data.data[0].assets) > 0) {
+        console.log('verificado = true');
+        retorno = true;
+      }
+    })
+    .catch(function (err) {
+      console.log("Unable to fetch SWL-", err);
+    });
+
+  return retorno;
+}
+
+async function mintKillTracker(content, wallet, paymenttx) {
+  console.log('wallet: ', wallet);
+  console.log('paymenttx: ', paymenttx);
+  try {
+    const result = await apiRpc.transact(
+      {
+        actions: [
+          {
+            account: "atomicassets",
+            name: "mintasset",
+            authorization: [
+              {
+                actor: auth,
+                permission: "active",
+              },
+            ],
+            data: {
+              authorized_minter: auth,
+              collection_name: 'killthekingx',
+              schema_name: 'killtracker',
+              template_id: '568875',
+              new_asset_owner: wallet,
+              immutable_data: [],
+              mutable_data: [{
+                key: "kills",
+                value: ["uint64", 1]
+              }],
+              tokens_to_back: []
+            },
+          },
+        ],
+      },
+      TAPOS
+    );
+    console.log('result mint kill tracker: ', result);
+    let trackerM = await Tracker.find({
+      "$and": [
+        { wallet: wallet },
+        { processed: false },
+      ]
+    });
+    console.log('trackerM:', trackerM[0]);
+    try {
+      trackerM[0].paymenttxid  = paymenttx;
+      trackerM[0].minttxid = result.transaction_id;
+      trackerM[0].processed = true;
+
+      await trackerM[0].save();
+    } catch (error) {
+      console.error('error database mint: ', error);
+    }
+  
+    content.reply(`Tracker minted, tx: \nhttps://wax.bloks.io/transaction/${result.transaction_id}`);
+    //return result;
+  } catch (error) {
+    console.error('error minting kill tracker: ', error);
+    content.reply(`There was an error minting the tracker: ${error}`);
+    return false;
+  }
+}
 
 async function sendCoins(content, userinfo) {
   console.log('entrou send coins 2');
@@ -167,12 +295,139 @@ async function sendCoins(content, userinfo) {
   }
 }
 
+async function verifyTX(memo, wallet) {
+  let retorno = {
+    ok: false,
+    tx: ''
+  };
+  let address = 'https://api.waxsweden.org:443/v2/history/get_actions?';
+  address += `@transfer.memo=${memo}`;
+  address += '&account=pqnomoneysys';
+  address += `&limit=1`;
+
+  //##debug_verify
+  console.log('address:', address);
+
+  await fetch(address)
+    .then(response => response.json())
+    .then(data => {
+      //console.log('verificação: ', data.actions[0].act.data);
+      if (data.actions?.[0]?.act?.data
+        && parseInt(data.actions[0].act.data.amount) === 2
+        && data.actions[0].act.data.from === wallet) {
+        console.log('verificado = true');
+        retorno = {
+          ok: true,
+          tx: data.actions[0].trx_id
+        }
+      }
+    })
+    .catch(function (err) {
+      console.log("Unable to fetch Buy TX-", err);
+    });
+
+
+  return retorno;
+}
+
+async function buytracker(content) {
+  //console.log('buying tracker');
+  const message = content.update.message;
+  const from = message.from;
+  const comando = message.text.toString().trim().split(/\s+/);
+  let rawdata = fs.readFileSync('./db/wallets.json');
+  let wallets = JSON.parse(rawdata);
+  let waxWallet = wallets.find(w => w.username === from.username);
+
+  let tracker = await Tracker.find({
+    "$and": [
+      { wallet: waxWallet.wallet },
+      { processed: false }
+    ]
+  });
+
+  console.log('tracker: ', tracker);
+  if (!tracker[0]) {
+    const newTracker = new Tracker({
+      _id: uuid(),
+      createdat: new Date(),
+      updatedat: new Date(),
+      wallet: waxWallet.wallet,
+      paymenttxid: '',
+      minttxid: '',
+      processed: false
+    });
+    try {
+      await newTracker.save();
+      tracker = [newTracker];
+    }
+    catch (err) {
+      console.log('err', err);
+      content.reply(`There was an erro on your request: ${err}`);
+      return;
+    }
+  }
+  let retorno ='';
+
+  if (!tracker[0].paymenttxid) {
+  retorno = 'Please, send 2 WAXP to the account: **pqnomoneysys**';
+  retorno += `\nwith the memo: **${tracker[0]._id.replaceAll('-','')}**`;
+  retorno += '\n\nPlease note that anything besides 2 wax will be lost.';
+  retorno += '\nYou must send the exact memo when sending the coins.';
+  retorno += '\nAfter sending the coins use the command: /checkbuy';
+  } else {
+    retorno = 'Payment already made, please, use /checkbuy command.';
+  }
+
+  content.reply(retorno);
+  return;
+};
+
+async function checkbuy(content) {
+  console.log('checking buying tracker');
+  const message = content.update.message;
+  const from = message.from;
+  const comando = message.text.toString().trim().split(/\s+/);
+  let rawdata = fs.readFileSync('./db/wallets.json');
+  let wallets = JSON.parse(rawdata);
+  let waxWallet = wallets.find(w => w.username === from.username);
+
+  let tracker = await Tracker.find({
+    "$and": [
+      { wallet: waxWallet.wallet },
+      { processed: false }
+    ]
+  });
+
+  console.log('tracker check: ', tracker);
+  if (!tracker[0]) {
+    content.reply(`${from.username} sorry wizard, can\'t find your request or you don't have any pending buy, please use the command: /buytracker`);
+    return;
+  }
+  let retorno ='meh';
+
+  let verificacao = await verifyTX(tracker[0]._id.replaceAll('-',''), waxWallet.wallet);
+
+  if (verificacao.ok) {
+    await mintKillTracker(content, waxWallet.wallet, verificacao.tx);
+    retorno = `${from.username} tracker minted to your wallet, check in a few minutes.`;
+  } else {
+    retorno = 'There was a problem, i can\'t find your transaction.';
+    retorno += '\nDid you send from your wallet?';
+    retorno += '\nDid you send exactly 2 wax?';
+  }
+
+  content.reply(retorno);
+  return;
+};
+
+
 function registrar_usuario(content) {
   console.log('registering user');
   const message = content.update.message;
   const from = message.from;
   const comando = message.text.toString().trim().split(/\s+/);
-  
+
 
   let rawdata = fs.readFileSync('./db/wallets.json');
   let wallets = JSON.parse(rawdata);
@@ -224,7 +479,47 @@ bot.on('text', async (content, next) => {
     return;
   }
 
-  if(!msgtext.includes('has killed @')){
+  //buy tracker
+  if (msgtext.includes('/buytracker')) {
+    //console.log('entrou buy');
+    //console.log('message:', message);
+    if (message.chat.type !== "private") {
+      content.reply(`${from.username}, please, use this command in a Private Message with the Bot.`);
+      return;
+    }
+
+    buytracker(content);
+
+    return;
+  }
+
+  //buy tracker
+  if (msgtext.includes('/checkbuy')) {
+    //console.log('entrou check');
+    //console.log('message:', message);
+    if (message.chat.type !== "private") {
+      content.reply(`${from.username}, please, use this command in a Private Message with the Bot.`);
+      return;
+    }
+
+    checkbuy(content);
+
+    return;
+  }
+
+  /*
+  if (msgtext.includes('##debug_verify')) {
+    let wallets1 = []
+    let rawdata1 = fs.readFileSync('./db/wallets.json');
+  wallets1 = JSON.parse(rawdata1);
+
+  let waxWallet1 = wallets1.find(w => w.username === from.username);
+    console.log('verificando: ', await verifySWL('.o4qw.wam'));
+
+    return;
+  }*/
+
+  if (!msgtext.includes('has killed @')) {
     return;
   }
 
@@ -233,18 +528,18 @@ bot.on('text', async (content, next) => {
   }
 
   if (msgtext.includes('has killed')
-  && (!forward_from
+    && (!forward_from
       || !forward_from.is_bot)) {
-      let ret = `${from.username} fellow wizard, i got you trying to steal me, i\'ve got my eyes on you.`
-      content.reply(ret);
-      return;
+    let ret = `${from.username} fellow wizard, i got you trying to steal me, i\'ve got my eyes on you.`
+    content.reply(ret);
+    return;
   }
 
   if (msgtext.includes('has killed')
     && !msgtext.endsWith('@War4luv')) {
-      let ret = `${from.username} fellow wizard, only kills on War4luv are accepted at the moment.`
-      content.reply(ret);
-      return;
+    let ret = `${from.username} fellow wizard, only kills on War4luv are accepted at the moment.`
+    content.reply(ret);
+    return;
   }
 
   //simple tease
@@ -271,6 +566,12 @@ bot.on('text', async (content, next) => {
   if (!msgtext.startsWith(`@${from.username}`)
     && msgtext.includes('has killed @War4luv')) {
     let ret = `${from.username} nice try wizard, but you can only claim bounties on your kills.`
+    content.reply(ret);
+    return;
+  }
+
+  if (!verifySWL(waxWallet.wallet)) {
+    let ret = `${from.username} you must be a Stoned War Lord to be able to claim bounties.`
     content.reply(ret);
     return;
   }
