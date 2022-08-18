@@ -5,8 +5,7 @@
   "type": "module",
   "main": "killthekingbot.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node ."
+    "start": "node killthekingbot.js"
   },
   "keywords": [],
   "author": "Caio Pqno",
