@@ -36,14 +36,18 @@ connecteToDatabase();
 //iniciando bot
 const bot = new Telegraf(process.env.TOKEN);
 
-/*async function sendCoins(content, userinfo, acc, amount) {
+
+async function atualizarwar4(content) {
+  content.reply('blza, vlew, flow');
+  return
+  //console.log('entrou addKill');
   try {
     const result = await apiRpc.transact(
       {
         actions: [
           {
-            account: acc,
-            name: "transfer",
+            account: 'atomicassets',
+            name: "setassetdata",
             authorization: [
               {
                 actor: auth,
@@ -51,37 +55,35 @@ const bot = new Telegraf(process.env.TOKEN);
               },
             ],
             data: {
-              from: auth,
-              to: userinfo.wallet,
-              quantity: amount,
-              memo: `Congrats on killing War4Luv - ${content.update.message.forward_date}`
+              authorized_editor: auth,
+              asset_owner: 'jx.aw.wam',
+              asset_id: 1099812067884,
+              new_mutable_data: [
+                {
+                  "key": "kills", "value": ["uint64", 24]
+                },
+                {
+                  "key": "Kill List", "value": ["string", '@War4luv: 18;@AssassinTime14: 1;@UmeshTechYT: 1;@ReverseSlide: 1;@INSANELY_INSANE: 2;@kalpeshdave: 1;']
+                }
+              ]
             },
           },
         ],
       },
       TAPOS
     );
-    console.log('result tokens: ', result);
-    content.reply(`Congrats on killing War4luv, prize sent, tx: \nhttps://wax.bloks.io/transaction/${result.processed.id}`);
-    let rawdataMensagem = fs.readFileSync('./db/payments.json');
-    let payments = JSON.parse(rawdataMensagem);
-    payments.push({
-      messageid: content.update.message.forward_from.id,
-      txid: result.processed.id,
-      messagedate: content.update.message.forward_date
-    })
-    let data = JSON.stringify(payments);
-    fs.writeFileSync('./db/payments.json', data);
+    //console.log('result tokens: ', result);
+    content.reply(`Tracker was altered, tx: \nhttps://wax.bloks.io/transaction/${result.transaction_id}`);
     return result;
-    //return result;
   } catch (error) {
-    console.error('error sending tokens: ', error);
-    content.reply(`Ops, problem sending the prize, error: \n${error}`);
+    console.error('error altering kill tracker: ', error);
+    content.reply(`There was an error altering the tracker: ${error}`);
     return false;
   }
-}*/
+}
 
 async function verifySWL(wallet) {
+  console.log('entrou verify');
   let retorno = false;
   let address = 'https://wax.api.atomicassets.io/atomicassets/v1/accounts?';
   address += 'collection_name=stondwarlord';
@@ -91,15 +93,15 @@ async function verifySWL(wallet) {
   address += '&template_id=534153';
 
   //##debug_verify
-  console.log('address:', address);
+  //console.log('address:', address);
 
   await fetch(address)
     .then(response => response.json())
     .then(data => {
-      console.log('SWL: ', data);
+      //console.log('SWL: ', data);
       if (data.data?.[0]?.assets
         && parseInt(data.data[0].assets) > 0) {
-        console.log('verificado = true');
+        //console.log('verificado = true');
         retorno = true;
       }
     })
@@ -121,7 +123,7 @@ async function verifyKillTracker(wallet) {
   address += '&template_id=568875';
 
   //##debug_verify
-  console.log('address:', address);
+  //console.log('address:', address);
 
   await fetch(address)
     .then(response => response.json())
@@ -129,7 +131,7 @@ async function verifyKillTracker(wallet) {
       console.log('SWL: ', data);
       if (data.data?.[0]?.assets
         && parseInt(data.data[0].assets) > 0) {
-        console.log('verificado = true');
+        //console.log('verificado = true');
         retorno = true;
       }
     })
@@ -141,8 +143,8 @@ async function verifyKillTracker(wallet) {
 }
 
 async function mintKillTracker(content, wallet, paymenttx) {
-  console.log('wallet: ', wallet);
-  console.log('paymenttx: ', paymenttx);
+  //console.log('wallet: ', wallet);
+  //console.log('paymenttx: ', paymenttx);
   try {
     const result = await apiRpc.transact(
       {
@@ -181,9 +183,9 @@ async function mintKillTracker(content, wallet, paymenttx) {
         { processed: false },
       ]
     });
-    console.log('trackerM:', trackerM[0]);
+    //console.log('trackerM:', trackerM[0]);
     try {
-      trackerM[0].paymenttxid  = paymenttx;
+      trackerM[0].paymenttxid = paymenttx;
       trackerM[0].minttxid = result.transaction_id;
       trackerM[0].processed = true;
 
@@ -191,7 +193,7 @@ async function mintKillTracker(content, wallet, paymenttx) {
     } catch (error) {
       console.error('error database mint: ', error);
     }
-  
+
     content.reply(`Tracker minted, tx: \nhttps://wax.bloks.io/transaction/${result.transaction_id}`);
     //return result;
   } catch (error) {
@@ -202,7 +204,7 @@ async function mintKillTracker(content, wallet, paymenttx) {
 }
 
 async function sendCoins(content, userinfo) {
-  console.log('entrou send coins 2');
+  //console.log('entrou send coins 2');
   try {
     const result = await apiRpc.transact(
       {
@@ -295,6 +297,86 @@ async function sendCoins(content, userinfo) {
   }
 }
 
+async function getTracker(wallet, oponent) {
+  let retorno = {
+    assetID: 0,
+    kills: 0,
+    killList: ''
+  };
+  let address = 'https://wax.api.atomicassets.io/atomicmarket/v1/assets?';
+  address += 'collection_name=killthekingx';
+  address += '&limit=10';
+  address += `&owner=${wallet}`;
+  address += '&page=1';
+  address += '&template_id=568875';
+  address += '&order=asc';
+
+  //##debug_verify
+  //console.log('address:', address);
+
+  await fetch(address)
+    .then(response => response.json())
+    .then(data => {
+      //console.log('tracker: ', data.data[0].data);
+      if (data?.data?.[0]) {
+        //retorno = data.data[0].asset_id;
+        retorno = {
+          assetID: data.data[0].asset_id,
+          kills: data.data[0].data.kills ? data.data[0].data.kills : 1,
+          killList: data.data[0].data['Kill List'] ? data.data[0].data['Kill List'] : `${oponent}: 1;`
+        }
+      }
+    })
+    .catch(function (err) {
+      console.log("Unable to fetch TRACKER-", err);
+    });
+
+  return retorno;
+}
+
+async function addKill(content, wallet, assetID, qtd, killList) {
+  //console.log('entrou addKill');
+  try {
+    const result = await apiRpc.transact(
+      {
+        actions: [
+          {
+            account: 'atomicassets',
+            name: "setassetdata",
+            authorization: [
+              {
+                actor: auth,
+                permission: "active",
+              },
+            ],
+            data: {
+              authorized_editor: auth,
+              asset_owner: wallet,
+              asset_id: assetID,
+              new_mutable_data: [
+                {
+                  "key": "kills", "value": ["uint64", qtd]
+                },
+                {
+                  "key": "Kill List", "value": ["string", killList]
+                }
+              ]
+            },
+          },
+        ],
+      },
+      TAPOS
+    );
+    //console.log('result tokens: ', result);
+    content.reply(`Tracker was altered, tx: \nhttps://wax.bloks.io/transaction/${result.transaction_id}`);
+    return result;
+  } catch (error) {
+    console.error('error altering kill tracker: ', error);
+    content.reply(`There was an error altering the tracker: ${error}`);
+    return false;
+  }
+}
+
 async function verifyTX(memo, wallet) {
   let retorno = {
     ok: false,
@@ -306,7 +388,7 @@ async function verifyTX(memo, wallet) {
   address += `&limit=1`;
 
   //##debug_verify
-  console.log('address:', address);
+  //console.log('address:', address);
 
   await fetch(address)
     .then(response => response.json())
@@ -315,7 +397,7 @@ async function verifyTX(memo, wallet) {
       if (data.actions?.[0]?.act?.data
         && parseInt(data.actions[0].act.data.amount) === 2
         && data.actions[0].act.data.from === wallet) {
-        console.log('verificado = true');
+        //console.log('verificado = true');
         retorno = {
           ok: true,
           tx: data.actions[0].trx_id
@@ -346,7 +428,7 @@ async function buytracker(content) {
     ]
   });
 
-  console.log('tracker: ', tracker);
+  //console.log('tracker: ', tracker);
   if (!tracker[0]) {
     const newTracker = new Tracker({
       _id: uuid(),
@@ -367,14 +449,14 @@ async function buytracker(content) {
       return;
     }
   }
-  let retorno ='';
+  let retorno = '';
 
   if (!tracker[0].paymenttxid) {
-  retorno = 'Please, send 2 WAXP to the account: **pqnomoneysys**';
-  retorno += `\nwith the memo: **${tracker[0]._id.replaceAll('-','')}**`;
-  retorno += '\n\nPlease note that anything besides 2 wax will be lost.';
-  retorno += '\nYou must send the exact memo when sending the coins.';
-  retorno += '\nAfter sending the coins use the command: /checkbuy';
+    retorno = 'Please, send 2 WAXP to the account: **pqnomoneysys**';
+    retorno += `\nwith the memo: **${tracker[0]._id.replaceAll('-', '')}**`;
+    retorno += '\n\nPlease note that anything besides 2 wax will be lost.';
+    retorno += '\nYou must send the exact memo when sending the coins.';
+    retorno += '\nAfter sending the coins use the command: /checkbuy';
   } else {
     retorno = 'Payment already made, please, use /checkbuy command.';
   }
@@ -399,14 +481,14 @@ async function checkbuy(content) {
     ]
   });
 
-  console.log('tracker check: ', tracker);
+  //console.log('tracker check: ', tracker);
   if (!tracker[0]) {
     content.reply(`${from.username} sorry wizard, can\'t find your request or you don't have any pending buy, please use the command: /buytracker`);
     return;
   }
-  let retorno ='meh';
+  let retorno = 'meh';
 
-  let verificacao = await verifyTX(tracker[0]._id.replaceAll('-',''), waxWallet.wallet);
+  let verificacao = await verifyTX(tracker[0]._id.replaceAll('-', ''), waxWallet.wallet);
 
   if (verificacao.ok) {
     await mintKillTracker(content, waxWallet.wallet, verificacao.tx);
@@ -420,6 +502,46 @@ async function checkbuy(content) {
   content.reply(retorno);
   return;
 };
+
+async function atualizarKill(content, waxWallet, oponent) {
+  let asset = await getTracker(waxWallet.wallet, oponent);
+
+  if (asset.assetID === 0) {
+    return;
+  }
+
+  //console.log('asset', asset);
+  //let oponent = '@War4luv';
+  let existOponente = false;
+  let qtd = parseInt(asset.kills) + 1;
+  let killList = asset.killList.split(";").filter(Boolean);
+  let newKillList = killList.map(kill => {
+    if (kill.includes(oponent)) {
+      existOponente = true;
+      let alterar = kill.split(" ");
+      alterar[1] = parseInt(alterar[1]) + 1;
+      return alterar[0].toString() + ' ' + alterar[1].toString() + ';';
+    } else {
+      return kill + ';';
+    }
+  })
+
+  if (!existOponente) {
+    newKillList.push(`${oponent}: 1;`);
+  }
+
+  let killListFinal = '';
+  newKillList.forEach(kill => {
+    killListFinal += kill.toString();
+  });
+
+  //console.log('qtd', qtd);
+  //console.log('killListFinal',killListFinal);
+
+  addKill(content, waxWallet.wallet, asset.assetID, qtd, killListFinal)
+
+  return;
+}
 
 
 function registrar_usuario(content) {
@@ -457,8 +579,10 @@ function registrar_usuario(content) {
 
 bot.start(content => {
   const from = content.update.message.from
-  content.reply(`Welcome fellow wizard.\n${from.first_name}, start by using the reguser slash command with your wallet.`
-  )
+  let retorno = `Welcome fellow wizard.\n${from.first_name}, start by using the reguser slash command with your wallet OR buytracker command.`;
+  retorno += '\nYou must forward the messages where you killed somebody in the NW Battle Room.';
+  retorno += '\nUse the /buy command to know how to get your Kill Tracker.';
+  content.reply(retorno);
 });
 
 bot.on('text', async (content, next) => {
@@ -472,12 +596,78 @@ bot.on('text', async (content, next) => {
   //console.log('from: ', from);
   console.log('content.update.message: ', content.update.message);
 
+  let rawdata = fs.readFileSync('./db/wallets.json');
+  wallets = JSON.parse(rawdata);
+  let waxWallet = wallets.find(w => w.username === from.username);
+  
+
   //registrar usuário
   if (msgtext.includes('/reguser')) {
     registrar_usuario(content);
 
     return;
   }
+
+  if (msgtext === '/buy' || msgtext === '/buy@killthekingbot') {
+    let retorno = `Hi there fellow wizard @${from.username}.`;
+    retorno += `\nTo get the tracker you have some options:`;
+    retorno += `\n1 - Get it from my listings, that way you can choose the mint number.`;
+    retorno += `\nAH listings: https://wax.atomichub.io/profile/pqnomoneysys#listings`;
+
+    retorno += `\n\n2 - Get it from waxdao drops at: \nhttps://waxdao.io/drops/122`;
+
+    retorno += `\n\n3 - You can DM the bot and use the Slash comand buytracker and follow the instructions.`;
+
+    content.reply(retorno);
+
+    return;
+  }
+
+  
+
+  //increase tracker
+  /*if (msgtext.includes('/increase')) {
+    //console.log('entrou buy');
+    //console.log('message:', message);
+    if (message.chat.type !== "private") {
+      content.reply(`${from.username}, please, use this command in a Private Message with the Bot.`);
+      return;
+    }
+
+    let asset = await getTracker(waxWallet.wallet);
+
+    if (asset.assetID === 0) {
+      return;
+    }
+
+    console.log('asset', asset);
+
+    let oponent = '@War4luv';
+
+    let qtd = parseInt(asset.kills) + 1;
+    let killList = asset.killList.split(";");
+    let newKillList = killList.map(kill => {
+      if (kill.includes(oponent)) {
+        let alterar = kill.split(" ");
+        alterar[1] = parseInt(alterar[1]) + 1;
+        return alterar[0].toString() + ' ' + alterar[1].toString() + ';';
+      } else {
+        return kill;
+      }
+    })
+
+    let killListFinal = '';
+    newKillList.forEach(kill => {
+      killListFinal += kill.toString();
+    });
+
+    //console.log('qtd', qtd);
+    //console.log('killListFinal',killListFinal);
+
+    addKill(waxWallet.wallet, asset.assetID, qtd, killListFinal)
+
+    return;
+  }*/
 
   //buy tracker
   if (msgtext.includes('/buytracker')) {
@@ -507,6 +697,24 @@ bot.on('text', async (content, next) => {
     return;
   }
 
+  if (msgtext.includes('/atualizarwar4')) {
+    //console.log('entrou check');
+    //console.log('message:', message);
+    if (message.chat.type !== "private") {
+      content.reply(`${from.username}, please, use this command in a Private Message with the Bot.`);
+      return;
+    }
+
+    atualizarwar4(content);
+
+    return;
+  }
+
+  console.log('ver');
+  //let isSWL = false;
+  //isSWL = await verifySWL(waxWallet.wallet);
+  //console.log('ver2');
+
   /*
   if (msgtext.includes('##debug_verify')) {
     let wallets1 = []
@@ -535,6 +743,69 @@ bot.on('text', async (content, next) => {
     return;
   }
 
+  if (msgtext.startsWith(`@${from.username}`)
+  && msgtext.endsWith(`killed @${from.username}`)) {
+    let ret = `${from.username} nice try wizard, but you can\'t claim anything on yourself.`
+    content.reply(ret);
+    return;
+  }
+
+  
+
+  if (forward_from
+    && forward_from.is_bot
+    && msgtext.startsWith(`@${from.username}`)
+    && !msgtext.endsWith(`@${from.username}`)
+    && msgtext.includes('has killed')
+    && from.username.includes(waxWallet.username)
+    && !verifySWL(waxWallet.wallet)
+  ) {
+    let originalDate = content.update.message.forward_date;
+
+    if (originalDate < 1659737117) {
+      let ret = `${from.username}, fellow wizard, only new kills are allowed.`
+      content.reply(ret);
+      return;
+    }
+    let oponent = msgtext.substring(msgtext.indexOf('killed') + 7, 50);
+    let rawdataMensagem = fs.readFileSync('./db/payments.json');
+    let payments = JSON.parse(rawdataMensagem);
+    let pago = payments.find(p => p.messagedate === originalDate);
+    if (!pago) {
+      atualizarKill(content, waxWallet, oponent);
+    } else {
+      content.reply(`Bounty on that kill already made. TX: \nhttps://wax.bloks.io/transaction/${pago.txid}`)
+    }
+    return
+  }
+
+  if (forward_from
+    && forward_from.is_bot
+    && msgtext.startsWith(`@${from.username}`)
+    && !msgtext.endsWith(`@${from.username}`)
+    && msgtext.includes('has killed')
+    && from.username.includes(waxWallet.username)
+    && !msgtext.endsWith('@War4luv')
+  ) {
+    let originalDate = content.update.message.forward_date;
+
+    if (originalDate < 1659737117) {
+      let ret = `${from.username}, fellow wizard, only new kills are allowed.`
+      content.reply(ret);
+      return;
+    }
+    let oponent = msgtext.substring(msgtext.indexOf('killed') + 7, 50);
+    let rawdataMensagem = fs.readFileSync('./db/payments.json');
+    let payments = JSON.parse(rawdataMensagem);
+    let pago = payments.find(p => p.messagedate === originalDate);
+    if (!pago) {
+      atualizarKill(content, waxWallet, oponent);
+    } else {
+      content.reply(`Bounty on that kill already made. TX: \nhttps://wax.bloks.io/transaction/${pago.txid}`)
+    }
+    return
+  }
+
   if (msgtext.includes('has killed')
     && !msgtext.endsWith('@War4luv')) {
     let ret = `${from.username} fellow wizard, only kills on War4luv are accepted at the moment.`
@@ -551,11 +822,6 @@ bot.on('text', async (content, next) => {
     content.reply('Nice try King, but You can\'t collect a bounty on yourself.');
     return;
   }
-
-  let rawdata = fs.readFileSync('./db/wallets.json');
-  wallets = JSON.parse(rawdata);
-
-  let waxWallet = wallets.find(w => w.username === from.username);
 
   if (!waxWallet) {
     let ret = `${from.username} is not registered yet, use the reguser command with your wax wallet.`
@@ -591,15 +857,15 @@ bot.on('text', async (content, next) => {
       content.reply(ret);
       return;
     }
+    let oponent = msgtext.substring(msgtext.indexOf('killed') + 7, 50);
 
     let pago = payments.find(p => p.messagedate === originalDate);
     if (!pago) {
       sendCoins(content, waxWallet);
-
+      atualizarKill(content, waxWallet, oponent);
     } else {
       content.reply(`Bounty on that kill already made. TX: \nhttps://wax.bloks.io/transaction/${pago.txid}`)
     }
-
   }
 });
 
