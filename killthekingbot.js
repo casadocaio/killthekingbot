@@ -54,14 +54,14 @@ async function atualizarwar4(content) {
             ],
             data: {
               authorized_editor: auth,
-              asset_owner: 'jx.aw.wam',
-              asset_id: 1099812067884,
+              asset_owner: 'ockaq.wam',
+              asset_id: 1099812111992,
               new_mutable_data: [
                 {
-                  "key": "kills", "value": ["uint64", 24]
+                  "key": "kills", "value": ["uint64", 14]
                 },
                 {
-                  "key": "Kill List", "value": ["string", '@War4luv: 18;@AssassinTime14: 1;@UmeshTechYT: 1;@ReverseSlide: 1;@INSANELY_INSANE: 2;@kalpeshdave: 1;']
+                  "key": "Kill List", "value": ["string", '@War4luv: 13;@ariefbayu: 1;']
                 }
               ]
             },
@@ -251,6 +251,22 @@ async function sendCoins(content, userinfo) {
               memo: `Congrats on killing War4Luv - ${content.update.message.forward_date}`
             },
           },
+          {
+            account: 't.taco',
+            name: "transfer",
+            authorization: [
+              {
+                actor: auth,
+                permission: "active",
+              },
+            ],
+            data: {
+              from: auth,
+              to: userinfo.wallet,
+              quantity: '40.0000 SHING',
+              memo: `Congrats on killing War4Luv - ${content.update.message.forward_date}`
+            },
+          },
         ],
       },
       TAPOS
@@ -312,6 +328,12 @@ async function getTracker(wallet, oponent) {
 }
 
 async function addKill(content, wallet, assetID, qtd, killList) {
+  let retorno = false;
+  console.log('wallet:', wallet);
+  console.log('assetID:', assetID);
+  console.log('qtd:', qtd);
+  console.log('killList:', killList);
+  console.log('messagedate:', content.update.message.forward_date);
   try {
     const result = await apiRpc.transact(
       {
@@ -359,12 +381,13 @@ async function addKill(content, wallet, assetID, qtd, killList) {
       content.reply(`There was an error on your request - update: ${err}`);
       return;
     }
-    return result;
+    //return result;
+    retorno = true;
   } catch (error) {
     console.error('error altering kill tracker: ', error);
     content.reply(`There was an error altering the tracker: ${error}`);
-    return false;
   }
+  return retorno;
 }
 
 async function verifyTX(memo, wallet) {
@@ -417,7 +440,7 @@ async function buytracker(content) {
     }
   }
 
-  if (!waxWallet) {
+  if (!waxWallet || !waxWallet.wallet) {
     content.reply('You need to register first, use the /reguser command.');
     return;
   }
@@ -486,7 +509,7 @@ async function checkbuy(content) {
     }
   }
 
-  if (!waxWallet) {
+  if (!waxWallet || !waxWallet.wallet) {
     content.reply('You need to register first, use the /reguser command.');
     return;
   }
@@ -529,6 +552,8 @@ async function atualizarKill(content, waxWallet, oponent) {
   let existOponente = false;
   let qtd = parseInt(asset.kills) + 1;
   let killList = asset.killList.split(";").filter(Boolean);
+
+  console.log('old kill list:', killList);
   let newKillList = killList.map(kill => {
     if (kill.includes(oponent)) {
       existOponente = true;
@@ -549,22 +574,32 @@ async function atualizarKill(content, waxWallet, oponent) {
     killListFinal += kill.toString();
   });
 
-  addKill(content, waxWallet.wallet, asset.assetID, qtd, killListFinal)
+  console.log('old kill list final:', killListFinal);
+
+  let verificar = await addKill(content, waxWallet.wallet, asset.assetID, qtd, killListFinal)
+  if(!verificar){
+    console.log(`Erro ao processar kill tracker ${waxWallet.wallet}|${asset.assetID}|${qtd}|${killListFinal}|`);
+  }
   return;
 }
 
 async function registrar_usuario(content) {
-  console.log('registering user');
+  
   const message = content.update.message;
   const from = message.from;
   const comando = message.text.toString().trim().split(/\s+/);
   let waxWallet = {};
+
+  console.log(`registering user: ${from.username}`);
 
   let dbW = await dbWallets.find({
     "$and": [
       { username: from.username },
     ]
   });
+
+
+  console.log(`dbW:`, dbW);
 
   if(dbW != "undefined" && dbW && dbW[0]){
     waxWallet = {
@@ -574,12 +609,18 @@ async function registrar_usuario(content) {
     }
   }
 
+  console.log(`waxWallet:`, waxWallet);
+
   if (comando && !comando[1]) {
+    console.log('entrou validacao 1.');
     content.reply('You must provide a valid WAX wallet like abcde.wam or a name with 12 chars. Type the command like /reguser abcde.wam.');
   } else if (comando[1] && (comando[1].length > 12 || comando[1].length < 1)) {
+    console.log('entrou validacao 2.');
     content.reply('Invalid wallet format. Please provide a wam wallet or custom 12 or less chars wallet. Type the command like /reguser abcde.wam.');
   } else {
-    if (!waxWallet) {
+    console.log('entrou no else.');
+    if (!waxWallet || !waxWallet.wallet) {
+      console.log('entrou para criar.');
       const newWallet = new dbWallets({
         username: from.username,
         wallet: comando[1]
@@ -614,7 +655,21 @@ bot.on('text', async (content, next) => {
   const from = content.update.message.from;
   const forward_from = content.update.message.forward_from;
   const msgtext = message.text;
-  //console.log('content.update.message: ', content.update.message);
+  console.log('content.update.message: ', content.update.message);
+
+  //bot status
+  if (msgtext.includes('/ping', '/ping@killthekingbot')) {
+    let retorno = `I\'m online fellow wizard @${from.username}.`;
+    let newMessage = await content.reply(retorno);
+    /*try {
+      content.deleteMessage(message.message_id);
+    } catch (error) {
+      
+    }*/
+    
+    console.log('newMessage.update.message: ', newMessage);
+    return;
+  }
 
   let waxWallet = {};
 
@@ -803,7 +858,7 @@ bot.on('text', async (content, next) => {
     return;
   }
 
-  if (!waxWallet) {
+  if (!waxWallet || !waxWallet.wallet) {
     let ret = `${from.username} is not registered yet, use the reguser command with your wax wallet.`
     content.reply(ret);
     return;
