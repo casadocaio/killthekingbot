@@ -89,12 +89,15 @@ async function verifySWL(wallet) {
   address += '&page=1';
   address += '&template_id=534153';
 
+  console.log('address: ', address);
+
   await fetch(address)
     .then(response => response.json())
     .then(data => {
       if (data.data?.[0]?.assets
         && parseInt(data.data[0].assets) > 0) {
         retorno = true;
+        console.log('deu OK SWL ');
       }
     })
     .catch(function (err) {
@@ -644,7 +647,7 @@ async function registrar_usuario(content) {
 
 bot.start(content => {
   const from = content.update.message.from
-  let retorno = `Welcome fellow wizard.\n${from.first_name}, start by using the reguser slash command with your wallet OR buytracker command.`;
+  let retorno = `Welcome fellow wizard.\n${from.first_name}, start by using the reguser slash command with your wallet.`;
   retorno += '\nYou must forward the messages where you killed somebody in the NW Battle Room.';
   retorno += '\nUse the /buy command to know how to get your Kill Tracker.';
   content.reply(retorno);
@@ -686,6 +689,19 @@ bot.on('text', async (content, next) => {
       db: true
     }
   }
+
+  let isSWL = await verifySWL(waxWallet.wallet);
+
+    //bot status
+    if (msgtext.includes('/ver', '/ver@killthekingbot')) {
+      let retorno = `verifying debug.`;
+      let newMessage = await content.reply(retorno);
+      
+      console.log('verify: ',isSWL);
+      return;
+    }
+  
+    
   
   //registrar usuário
   if (msgtext.includes('/reguser', '/reguser@killthekingbot')) {
@@ -696,15 +712,14 @@ bot.on('text', async (content, next) => {
 
   if (msgtext === '/buy' || msgtext === '/buy@killthekingbot') {
     let retorno = `Hi there fellow wizard @${from.username}.`;
-    retorno += `\nTo get the tracker you have some options:`;
-    retorno += `\n1 - Get it from my listings, that way you can choose the mint number.`;
+    retorno += `\nTo get the tracker you have to buy from the market:`;
     retorno += `\nAH listings: https://wax.atomichub.io/profile/pqnomoneysys#listings`;
 
-    retorno += `\n\n2 - Get it from waxdao drops at: \nhttps://waxdao.io/drops/122`;
-
-    retorno += `\n\n3 - You can DM the bot and use the Slash comand buytracker and follow the instructions.`;
+    retorno += `\n\nREMEMBER to uncheck the \"Only Whitelisted NFTs\" flag.`;
 
     retorno += `\n\nREMEMBER you must be registered with the bot to log kills. \nUse the command /reguser`;
+
+    retorno += `\n\nOnce you have registered your self, just foward the \"has killed\" message to the bot and the nft will be altered.`;
 
     content.reply(retorno);
     return;
@@ -712,24 +727,27 @@ bot.on('text', async (content, next) => {
 
   //buy tracker
   if (msgtext.includes('/buytracker', '/buytracker@killthekingbot')) {
+    return;
+    /*
     if (message.chat.type !== "private") {
       content.reply(`${from.username}, please, use this command in a Private Message with the Bot.`);
       return;
     }
 
     buytracker(content);
-    return;
+    return;*/
   }
 
   //buy tracker
   if (msgtext.includes('/checkbuy', '/checkbuy@killthekingbot')) {
-    if (message.chat.type !== "private") {
+    return;
+    /*if (message.chat.type !== "private") {
       content.reply(`${from.username}, please, use this command in a Private Message with the Bot.`);
       return;
     }
 
     checkbuy(content);
-    return;
+    return;*/
   }
 
   if (msgtext.includes('/atualizarwar4', '/atualizarwar4@killthekingbot')) {
@@ -743,6 +761,7 @@ bot.on('text', async (content, next) => {
   }
 
   if (!msgtext.includes('has killed @')) {
+    console.log('saiu A001');
     return;
   }
 
@@ -754,6 +773,7 @@ bot.on('text', async (content, next) => {
   if (msgtext.includes('has killed')
     && (!forward_from
       || !forward_from.is_bot)) {
+        console.log('saiu A002');
     let ret = `${from.username} fellow wizard, i got you trying to steal me, i\'ve got my eyes on you.`
     content.reply(ret);
     return;
@@ -761,10 +781,20 @@ bot.on('text', async (content, next) => {
 
   if (msgtext.startsWith(`@${from.username}`)
   && msgtext.endsWith(`killed @${from.username}`)) {
+    console.log('saiu A003');
     let ret = `${from.username} nice try wizard, but you can\'t claim anything on yourself.`
     content.reply(ret);
     return;
   }
+
+  console.log('chegou verificar');
+  console.log('forward_from: ', forward_from);
+  console.log('forward_from.is_bot: ', forward_from.is_bot);
+  console.log('msgtext.startsWith: ', msgtext.startsWith(`@${from.username}`));
+  console.log('!msgtext.endsWith: ', !msgtext.endsWith(`@${from.username}`));
+  console.log('msgtext.includes: ', msgtext.includes('has killed'));
+  console.log('from.username.includes(waxWallet.username): ', from.username.includes(waxWallet.username));
+  console.log('isSWL: ', isSWL);
 
   if (forward_from
     && forward_from.is_bot
@@ -772,11 +802,13 @@ bot.on('text', async (content, next) => {
     && !msgtext.endsWith(`@${from.username}`)
     && msgtext.includes('has killed')
     && from.username.includes(waxWallet.username)
-    && !verifySWL(waxWallet.wallet)
+    && !isSWL
   ) {
+    console.log('saiu A004');
     let originalDate = content.update.message.forward_date;
 
     if (originalDate < 1659737117) {
+      console.log('saiu A005 - data');
       let ret = `${from.username}, fellow wizard, only new kills are allowed.`
       content.reply(ret);
       return;
@@ -806,6 +838,8 @@ bot.on('text', async (content, next) => {
     }
     return
   }
+
+  console.log('passou outros usuarios');
 
   if (forward_from
     && forward_from.is_bot
@@ -871,7 +905,7 @@ bot.on('text', async (content, next) => {
     return;
   }
 
-  if (!verifySWL(waxWallet.wallet)) {
+  if (!isSWL) {
     let ret = `${from.username} you must be a Stoned War Lord to be able to claim bounties.`
     content.reply(ret);
     return;
@@ -882,8 +916,10 @@ bot.on('text', async (content, next) => {
     && msgtext.includes('has killed @War4luv')
     && msgtext.includes(waxWallet.username)
     && from.username.includes(waxWallet.username)
+    && isSWL
   ) {
     let originalDate = content.update.message.forward_date;
+    console.log(`entrou usuário ${waxWallet.username}, ${waxWallet.wallet} SWL verificado`);
 
     if (originalDate < 1659737117) {
       let ret = `${from.username}, fellow wizard, only new kills are allowed.`
@@ -910,7 +946,10 @@ bot.on('text', async (content, next) => {
     }
 
     if (!pago.txid) {
-      sendCoins(content, waxWallet);
+      //if (isSWL) {
+        sendCoins(content, waxWallet);
+      //}
+      
       atualizarKill(content, waxWallet, oponent);
     } else {
       content.reply(`(3)Bounty on that kill already made. TX: \nhttps://wax.bloks.io/transaction/${pago.txid}`)
